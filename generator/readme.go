@@ -18,7 +18,7 @@ A Go web application with authentication, user management, and session handling.
 
 ## Tech Stack
 
-- **Language**: Go 1.23+
+- **Language**: Go {{.GoVersion}}+
 - **Web Framework**: httprouter
 - **Templates**: Templ
 - **Interactivity**: HTMX
@@ -31,7 +31,7 @@ A Go web application with authentication, user management, and session handling.
 
 ### Prerequisites
 
-- Go 1.23 or later
+- Go {{.GoVersion}} or later
 - {{if eq .DBDriver "postgres"}}PostgreSQL 16+{{else}}SQLite{{end}}
 - Make (optional)
 

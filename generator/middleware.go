@@ -6,6 +6,7 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	{{if .WithSessions}}"{{.Module}}/internal/session"{{end}}
@@ -62,7 +63,12 @@ func Auth(next http.Handler) http.Handler {
 		}
 
 		for route := range publicRoutes {
-			if r.URL.Path == route || (len(route) > 0 && len(r.URL.Path) >= len(route) && r.URL.Path[:len(route)] == route) {
+			if r.URL.Path == route {
+				next.ServeHTTP(w, r)
+				return
+			}
+			// Prefix match for routes like /static/ (not for "/" alone)
+			if len(route) > 1 && strings.HasSuffix(route, "/") && len(r.URL.Path) >= len(route) && r.URL.Path[:len(route)] == route {
 				next.ServeHTTP(w, r)
 				return
 			}
@@ -81,5 +87,89 @@ func Auth(next http.Handler) http.Handler {
 `
 
 func (g *Generator) generateMiddleware() error {
-	return g.writeTemplate(g.projectPath("internal/middleware/middleware.go"), middlewareGoTemplate, g.config)
+	if err := g.writeTemplate(g.projectPath("internal/middleware/middleware.go"), middlewareGoTemplate, g.config); err != nil {
+		return err
+	}
+	return g.writeTemplate(g.projectPath("internal/middleware/middleware_test.go"), middlewareTestTemplate, g.config)
 }
+
+const middlewareTestTemplate = `package middleware
+
+import (
+	"net/http"
+	"net/http/httptest"
+	"testing"
+)
+
+func TestLogging(t *testing.T) {
+	nextCalled := false
+	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		nextCalled = true
+		w.WriteHeader(http.StatusOK)
+	})
+	handler := Logging(next)
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if !nextCalled {
+		t.Error("Logging: next handler was not called")
+	}
+	if rec.Code != http.StatusOK {
+		t.Errorf("Logging: got status %d", rec.Code)
+	}
+}
+
+func TestRecovery(t *testing.T) {
+	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		panic("test panic")
+	})
+	handler := Recovery(next)
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusInternalServerError {
+		t.Errorf("Recovery: got status %d, want 500", rec.Code)
+	}
+}
+
+{{if .WithAuth}}
+func TestAuth_NoUserID_RedirectsToLogin(t *testing.T) {
+	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+	handler := Auth(next)
+
+	req := httptest.NewRequest(http.MethodGet, "/dashboard", nil)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusSeeOther {
+		t.Errorf("Auth: got status %d, want 303", rec.Code)
+	}
+	if loc := rec.Header().Get("Location"); loc != "/login" {
+		t.Errorf("Auth: Location = %q, want /login", loc)
+	}
+}
+
+func TestAuth_PublicRoute_Allowed(t *testing.T) {
+	nextCalled := false
+	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		nextCalled = true
+		w.WriteHeader(http.StatusOK)
+	})
+	handler := Auth(next)
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if !nextCalled {
+		t.Error("Auth: next handler was not called for public route")
+	}
+}
+{{end}}
+`

@@ -4,6 +4,8 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/exec"
+	"regexp"
 	"strings"
 
 	"github.com/bennett-matt/goth-generator/generator"
@@ -48,6 +50,7 @@ func main() {
 		WithAuth:     *withAuth,
 		WithUsers:    *withUsers,
 		WithSessions: *withSessions,
+		GoVersion:    goVersionMinor(),
 	}
 
 	gen := generator.New(config)
@@ -74,4 +77,19 @@ func normalizeModulePath(module string) string {
 		}
 	}
 	return module
+}
+
+// goVersionMinor returns the current Go version as major.minor (e.g. "1.24")
+// for use in generated Dockerfiles and docs. Falls back to "1.23" if detection fails.
+func goVersionMinor() string {
+	out, err := exec.Command("go", "version").Output()
+	if err != nil {
+		return "1.23"
+	}
+	// "go version go1.24.3 linux/amd64" -> "1.24"
+	re := regexp.MustCompile(`go(\d+\.\d+)`)
+	if m := re.FindStringSubmatch(string(out)); len(m) >= 2 {
+		return m[1]
+	}
+	return "1.23"
 }

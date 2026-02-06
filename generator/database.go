@@ -90,5 +90,43 @@ func MigrateUp(db *sql.DB) error {
 `
 
 func (g *Generator) generateDatabase() error {
-	return g.writeTemplate(g.projectPath("internal/database/database.go"), databaseGoTemplate, g.config)
+	if err := g.writeTemplate(g.projectPath("internal/database/database.go"), databaseGoTemplate, g.config); err != nil {
+		return err
+	}
+	return g.writeTemplate(g.projectPath("internal/database/database_test.go"), databaseTestTemplate, g.config)
 }
+
+const databaseTestTemplate = `package database
+
+import (
+	"os"
+	"testing"
+)
+
+{{if eq .DBDriver "postgres"}}
+func TestNew_InvalidDSN_ReturnsError(t *testing.T) {
+	os.Setenv("DATABASE_URL", "postgres://invalid:invalid@invalid:9999/nonexistent?sslmode=disable")
+	defer os.Unsetenv("DATABASE_URL")
+
+	_, err := New()
+	if err == nil {
+		t.Fatal("New: expected error for invalid DSN")
+	}
+}
+{{else if eq .DBDriver "sqlite"}}
+func TestNew_InMemory_Succeeds(t *testing.T) {
+	os.Setenv("DATABASE_URL", ":memory:")
+	defer os.Unsetenv("DATABASE_URL")
+
+	db, err := New()
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	defer db.Close()
+
+	if err := db.Ping(); err != nil {
+		t.Errorf("Ping: %v", err)
+	}
+}
+{{end}}
+`

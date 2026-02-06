@@ -194,5 +194,100 @@ func (h *Handler) GetUser(w http.ResponseWriter, r *http.Request, ps httprouter.
 `
 
 func (g *Generator) generateHandlers() error {
-	return g.writeTemplate(g.projectPath("internal/handlers/handlers.go"), handlersGoTemplate, g.config)
+	if err := g.writeTemplate(g.projectPath("internal/handlers/handlers.go"), handlersGoTemplate, g.config); err != nil {
+		return err
+	}
+	return g.writeTemplate(g.projectPath("internal/handlers/handlers_test.go"), handlersTestTemplate, g.config)
 }
+
+const handlersTestTemplate = `package handlers
+
+import (
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+)
+
+func TestHealthCheck(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/health", nil)
+	rec := httptest.NewRecorder()
+
+	HealthCheck(rec, req, nil)
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("HealthCheck: got status %d, want %d", rec.Code, http.StatusOK)
+	}
+	if ct := rec.Header().Get("Content-Type"); ct != "application/json" {
+		t.Errorf("HealthCheck: Content-Type = %q, want application/json", ct)
+	}
+	var body map[string]string
+	if err := json.NewDecoder(rec.Body).Decode(&body); err != nil {
+		t.Fatalf("HealthCheck: invalid JSON: %v", err)
+	}
+	if body["status"] != "ok" {
+		t.Errorf("HealthCheck: body[status] = %q, want ok", body["status"])
+	}
+}
+
+func TestNewHandler(t *testing.T) {
+	h := NewHandler("TestApp", nil, nil)
+	if h == nil {
+		t.Fatal("NewHandler returned nil")
+	}
+	if h.AppName != "TestApp" {
+		t.Errorf("AppName = %q, want TestApp", h.AppName)
+	}
+}
+
+func TestHandler_Home_NotLoggedIn(t *testing.T) {
+	h := NewHandler("App", nil, nil)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+
+	h.Home(rec, req, nil)
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("Home: got status %d, want %d", rec.Code, http.StatusOK)
+	}
+	if body := rec.Body.String(); body == "" {
+		t.Error("Home: got empty body")
+	}
+}
+
+{{if .WithAuth}}
+func TestHandleLogin_EmptyCredentials_Redirects(t *testing.T) {
+	h := NewHandler("App", nil, nil)
+	req := httptest.NewRequest(http.MethodPost, "/login", strings.NewReader("email=&password="))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rec := httptest.NewRecorder()
+
+	h.HandleLogin(rec, req, nil)
+
+	if rec.Code != http.StatusSeeOther {
+		t.Errorf("HandleLogin: got status %d, want %d", rec.Code, http.StatusSeeOther)
+	}
+	if loc := rec.Header().Get("Location"); loc == "" || !strings.Contains(loc, "error=") {
+		t.Errorf("HandleLogin: expected redirect to login with error, got Location %q", loc)
+	}
+}
+
+func TestHandleRegister_ShortPassword_Redirects(t *testing.T) {
+	h := NewHandler("App", nil, nil)
+	body := "name=Test&email=test@example.com&password=short"
+	req := httptest.NewRequest(http.MethodPost, "/register", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rec := httptest.NewRecorder()
+
+	h.HandleRegister(rec, req, nil)
+
+	if rec.Code != http.StatusSeeOther {
+		t.Errorf("HandleRegister: got status %d, want %d", rec.Code, http.StatusSeeOther)
+	}
+	if loc := rec.Header().Get("Location"); loc == "" || !strings.Contains(loc, "error=") {
+		t.Errorf("HandleRegister: expected redirect with error, got Location %q", loc)
+	}
+}
+{{end}}
+`

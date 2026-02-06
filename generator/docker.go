@@ -1,11 +1,11 @@
 package generator
 
-const dockerfileTemplate = `FROM golang:1.24-alpine AS builder
+const dockerfileTemplate = `FROM golang:{{.GoVersion}}-alpine AS builder
 
 WORKDIR /app
 
-# Install build dependencies (git for go get, node/npm for Tailwind)
-RUN apk add --no-cache git nodejs npm
+# Install build dependencies (git, node/npm for Tailwind{{if eq .DBDriver "sqlite"}}, gcc for CGO/sqlite{{end}})
+RUN apk add --no-cache git nodejs npm{{if eq .DBDriver "sqlite"}} build-base{{end}}
 
 # Go modules
 COPY go.mod go.sum ./
@@ -17,12 +17,12 @@ COPY . .
 # Build Tailwind CSS (output.css for static assets)
 RUN npm install && npm run build:css:once
 
-# Generate Templ code from .templ files
-RUN go run github.com/a-h/templ/cmd/templ@latest generate
-RUN for f in web/templates/*_templ.go; do [ -f "$$f" ] && perl -i -0pe 's/(import templruntime "github\.com\/a-h\/templ\/runtime")\n\nimport "github\.com\/a-h\/templ"\n/\1\n/g' "$$f"; done
+# Generate Templ code from .templ files (perl fixes duplicate import if present)
+RUN go run github.com/a-h/templ/cmd/templ@latest generate && \
+    (for f in web/templates/*_templ.go; do [ -f "$$f" ] && perl -i -0pe 's/(import templruntime "github\.com\/a-h\/templ\/runtime")\n\nimport "github\.com\/a-h\/templ"\n/\1\n/g' "$$f"; done || true)
 
-# Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -o /app/server ./cmd/server
+# Build the application (CGO required for sqlite; static binary for postgres)
+RUN GOOS=linux {{if eq .DBDriver "postgres"}}CGO_ENABLED=0 {{end}}go build -o /app/server ./cmd/server
 
 # Final stage
 FROM alpine:latest
@@ -33,6 +33,7 @@ WORKDIR /root/
 
 COPY --from=builder /app/server .
 COPY --from=builder /app/web ./web
+COPY --from=builder /app/db ./db
 
 {{if eq .DBDriver "postgres"}}
 # PostgreSQL client for migrations (optional)
