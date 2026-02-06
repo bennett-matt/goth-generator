@@ -2,8 +2,6 @@ package generator
 
 const baseTemplTemplate = `package templates
 
-import "github.com/a-h/templ"
-
 templ Base(title string, appName string, loggedIn bool) {
 	<!DOCTYPE html>
 	<html lang="en" data-theme="corporate">
@@ -66,8 +64,6 @@ templ Base(title string, appName string, loggedIn bool) {
 
 const homeTemplTemplate = `package templates
 
-import "github.com/a-h/templ"
-
 templ Home(loggedIn bool, userName string) {
 	if loggedIn {
 		<div class="space-y-6">
@@ -124,8 +120,6 @@ templ Home(loggedIn bool, userName string) {
 
 const loginTemplTemplate = `package templates
 
-import "github.com/a-h/templ"
-
 templ Login(errorMsg string, csrfToken string) {
 	<div class="flex justify-center items-center min-h-[50vh]">
 		<div class="card bg-base-100 shadow-xl w-full max-w-md">
@@ -156,8 +150,6 @@ templ Login(errorMsg string, csrfToken string) {
 `
 
 const registerTemplTemplate = `package templates
-
-import "github.com/a-h/templ"
 
 templ Register(errorMsg string, csrfToken string) {
 	<div class="flex justify-center items-center min-h-[50vh]">
