@@ -6,6 +6,7 @@ const packageJsonTemplate = `{
 	"description": "",
 	"scripts": {
 		"build:css": "npx @tailwindcss/cli -i ./input.css -o ./web/static/css/output.css --watch",
+		"build:css:once": "npx @tailwindcss/cli -i ./input.css -o ./web/static/css/output.css",
 		"postinstall": "node -e \"require('fs').mkdirSync('web/static/js',{recursive:true}); require('fs').copyFileSync('node_modules/htmx.org/dist/htmx.min.js','web/static/js/htmx.min.js')\""
 	},
 	"devDependencies": {

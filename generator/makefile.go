@@ -5,6 +5,8 @@ const makefileTemplate = `.PHONY: dev build run test clean migrate sqlc templ cs
 # Development
 dev:
 	@templ generate 2>/dev/null || true
+	@echo "Building CSS..."
+	@npm run build:css:once
 	@echo "Starting development server and CSS watcher..."
 	@(make css &) && go run ./cmd/server
 
