@@ -1,6 +1,6 @@
 package generator
 
-const dockerfileTemplate = `FROM golang:1.23-alpine AS builder
+const dockerfileTemplate = `FROM golang:1.24-alpine AS builder
 
 WORKDIR /app
 
