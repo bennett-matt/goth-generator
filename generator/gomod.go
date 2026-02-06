@@ -3,6 +3,7 @@ package generator
 import (
 	"fmt"
 	"os/exec"
+	"strings"
 )
 
 func (g *Generator) generateGoMod() error {
@@ -12,6 +13,13 @@ func (g *Generator) generateGoMod() error {
 	module := g.config.Module
 	if module == "" {
 		module = g.config.Name
+	}
+	// Strip URL scheme - Go expects github.com/user/repo, not https://github.com/user/repo
+	for _, prefix := range []string{"https://", "http://"} {
+		if strings.HasPrefix(module, prefix) {
+			module = strings.TrimPrefix(module, prefix)
+			break
+		}
 	}
 
 	initCmd := exec.Command("go", "mod", "init", module)
