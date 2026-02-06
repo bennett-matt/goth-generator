@@ -32,6 +32,7 @@ func main() {
 	if *module == "" {
 		*module = strings.ToLower(*name)
 	}
+	*module = normalizeModulePath(*module)
 
 	config := &generator.Config{
 		Name:         *name,
@@ -56,4 +57,15 @@ func main() {
 	fmt.Printf("   1. cd %s\n", filepath.Join(*output, *name))
 	fmt.Printf("   2. cp .env.example .env  # Configure your environment\n")
 	fmt.Printf("   3. make dev\n")
+}
+
+// normalizeModulePath strips URL schemes (https://, http://) from module paths.
+// Go expects github.com/user/repo, not https://github.com/user/repo.
+func normalizeModulePath(module string) string {
+	for _, prefix := range []string{"https://", "http://"} {
+		if strings.HasPrefix(module, prefix) {
+			return strings.TrimPrefix(module, prefix)
+		}
+	}
+	return module
 }
