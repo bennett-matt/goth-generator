@@ -13,6 +13,8 @@ sql:
         emit_interface: true
         emit_json_tags: true
         overrides:
+          - column: "users.id"
+            go_type: "int64"
           - column: "users.password_hash"
             go_struct_tag: 'json:"-"'
           - column: "sessions.user_id"
