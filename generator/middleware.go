@@ -57,6 +57,7 @@ func Auth(next http.Handler) http.Handler {
 			"/health":  true,
 			"/login":   true,
 			"/register": true,
+			"/logout":  true,
 			"/static/": true,
 		}
 

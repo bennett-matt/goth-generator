@@ -126,12 +126,18 @@ const loginTemplTemplate = `package templates
 
 import "github.com/a-h/templ"
 
-templ Login() {
+templ Login(errorMsg string, csrfToken string) {
 	<div class="flex justify-center items-center min-h-[50vh]">
 		<div class="card bg-base-100 shadow-xl w-full max-w-md">
 			<div class="card-body">
 				<h2 class="card-title text-2xl mb-4">Sign in</h2>
-				<form method="POST" action="/login" class="form-control gap-4" hx-post="/login" hx-swap="innerHTML" hx-target="closest .card">
+				if len(errorMsg) > 0 {
+					<div class="alert alert-error mb-4">
+						<span>{ errorMsg }</span>
+					</div>
+				}
+				<form method="POST" action="/login" class="form-control gap-4">
+					<input type="hidden" name="csrf_token" value={ csrfToken }/>
 					<label class="form-control">
 						<span class="label-text font-medium">Email</span>
 						<input type="email" name="email" class="input input-bordered" placeholder="you@example.com" required />
@@ -153,12 +159,18 @@ const registerTemplTemplate = `package templates
 
 import "github.com/a-h/templ"
 
-templ Register() {
+templ Register(errorMsg string, csrfToken string) {
 	<div class="flex justify-center items-center min-h-[50vh]">
 		<div class="card bg-base-100 shadow-xl w-full max-w-md">
 			<div class="card-body">
 				<h2 class="card-title text-2xl mb-4">Create account</h2>
-				<form method="POST" action="/register" class="form-control gap-4" hx-post="/register" hx-swap="innerHTML" hx-target="closest .card">
+				if len(errorMsg) > 0 {
+					<div class="alert alert-error mb-4">
+						<span>{ errorMsg }</span>
+					</div>
+				}
+				<form method="POST" action="/register" class="form-control gap-4">
+					<input type="hidden" name="csrf_token" value={ csrfToken }/>
 					<label class="form-control">
 						<span class="label-text font-medium">Name</span>
 						<input type="text" name="name" class="input input-bordered" placeholder="Your name" required />

@@ -61,7 +61,8 @@ func main() {
 	fmt.Printf("🚀 Next steps:\n")
 	fmt.Printf("   1. cd %s\n", *output)
 	fmt.Printf("   2. cp .env.example .env  # Configure your environment\n")
-	fmt.Printf("   3. make dev\n")
+	fmt.Printf("   3. make setup\n")
+	fmt.Printf("   4. make dev\n")
 }
 
 // normalizeModulePath strips URL schemes (https://, http://) from module paths.

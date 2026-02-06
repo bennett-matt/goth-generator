@@ -53,8 +53,11 @@ deps:
 	@go mod download
 
 # Setup development environment
-setup: deps
+setup:
 	@cp .env.example .env
+	@echo "Generating Templ code..."
+	@templ generate
+	@$(MAKE) deps
 	@npm install
 	@echo "✅ Setup complete! Edit .env file with your configuration."
 	@echo "   Run 'make dev' to start the server and CSS watcher."

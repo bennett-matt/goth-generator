@@ -72,6 +72,7 @@ func main() {
 	router.POST("/login", h.HandleLogin)
 	router.GET("/register", h.Register)
 	router.POST("/register", h.HandleRegister)
+	router.GET("/logout", h.HandleLogout)
 	router.POST("/logout", h.HandleLogout)
 	{{end}}
 

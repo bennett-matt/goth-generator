@@ -6,10 +6,14 @@ import (
 	"database/sql"
 	"encoding/json"
 	"net/http"
+	"net/url"
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/a-h/templ"
 	"github.com/julienschmidt/httprouter"
+	"github.com/justinas/nosurf"
 	"{{.Module}}/internal/models"
 	"{{.Module}}/web/templates"
 	{{if .WithSessions}}"{{.Module}}/internal/session"{{end}}
@@ -56,28 +60,106 @@ func (h *Handler) Home(w http.ResponseWriter, r *http.Request, _ httprouter.Para
 
 {{if .WithAuth}}
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	ctx := templ.WithChildren(r.Context(), templates.Login())
+	errorMsg := r.URL.Query().Get("error")
+	ctx := templ.WithChildren(r.Context(), templates.Login(errorMsg, nosurf.Token(r)))
 	templates.Base("Login", h.AppName, false).Render(ctx, w)
 }
 
 func (h *Handler) HandleLogin(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	// Implementation for login
-	http.Error(w, "Not implemented", http.StatusNotImplemented)
+	if r.Method != http.MethodPost {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		http.Redirect(w, r, "/login?error="+url.QueryEscape("Invalid form"), http.StatusSeeOther)
+		return
+	}
+	email := strings.TrimSpace(r.FormValue("email"))
+	password := r.FormValue("password")
+	if email == "" || password == "" {
+		http.Redirect(w, r, "/login?error="+url.QueryEscape("Email and password are required"), http.StatusSeeOther)
+		return
+	}
+	user, err := h.UserService.GetByEmail(r.Context(), email)
+	if err != nil {
+		http.Redirect(w, r, "/login?error="+url.QueryEscape("Invalid email or password"), http.StatusSeeOther)
+		return
+	}
+	if err := h.UserService.VerifyPassword(user, password); err != nil {
+		http.Redirect(w, r, "/login?error="+url.QueryEscape("Invalid email or password"), http.StatusSeeOther)
+		return
+	}
+	if h.SessionStore == nil {
+		http.Redirect(w, r, "/login?error="+url.QueryEscape("Sessions not configured"), http.StatusSeeOther)
+		return
+	}
+	sess, err := h.SessionStore.Create(r.Context(), user.ID, time.Now().Add(7*24*time.Hour))
+	if err != nil {
+		http.Redirect(w, r, "/login?error="+url.QueryEscape("Failed to create session"), http.StatusSeeOther)
+		return
+	}
+	http.SetCookie(w, &http.Cookie{
+		Name:     "session_id",
+		Value:    sess.ID,
+		Path:     "/",
+		MaxAge:   7 * 24 * 3600,
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+	})
+	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
 func (h *Handler) Register(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	ctx := templ.WithChildren(r.Context(), templates.Register())
+	errorMsg := r.URL.Query().Get("error")
+	ctx := templ.WithChildren(r.Context(), templates.Register(errorMsg, nosurf.Token(r)))
 	templates.Base("Register", h.AppName, false).Render(ctx, w)
 }
 
 func (h *Handler) HandleRegister(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	// Implementation for registration
-	http.Error(w, "Not implemented", http.StatusNotImplemented)
+	if r.Method != http.MethodPost {
+		http.Redirect(w, r, "/register", http.StatusSeeOther)
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		http.Redirect(w, r, "/register?error="+url.QueryEscape("Invalid form"), http.StatusSeeOther)
+		return
+	}
+	name := strings.TrimSpace(r.FormValue("name"))
+	email := strings.TrimSpace(r.FormValue("email"))
+	password := r.FormValue("password")
+	if name == "" || email == "" || password == "" {
+		http.Redirect(w, r, "/register?error="+url.QueryEscape("All fields are required"), http.StatusSeeOther)
+		return
+	}
+	if len(password) < 8 {
+		http.Redirect(w, r, "/register?error="+url.QueryEscape("Password must be at least 8 characters"), http.StatusSeeOther)
+		return
+	}
+	_, err := h.UserService.Create(r.Context(), email, password, name)
+	if err != nil {
+		if strings.Contains(err.Error(), "duplicate") || strings.Contains(err.Error(), "unique") {
+			http.Redirect(w, r, "/register?error="+url.QueryEscape("Email already registered"), http.StatusSeeOther)
+			return
+		}
+		http.Redirect(w, r, "/register?error="+url.QueryEscape("Registration failed"), http.StatusSeeOther)
+		return
+	}
+	http.Redirect(w, r, "/login?registered=1", http.StatusSeeOther)
 }
 
 func (h *Handler) HandleLogout(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	// Implementation for logout
-	http.Error(w, "Not implemented", http.StatusNotImplemented)
+	if cookie, err := r.Cookie("session_id"); err == nil && cookie != nil && h.SessionStore != nil {
+		h.SessionStore.Delete(r.Context(), cookie.Value)
+	}
+	http.SetCookie(w, &http.Cookie{
+		Name:     "session_id",
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+	})
+	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 {{end}}
 
