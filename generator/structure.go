@@ -8,7 +8,7 @@ func (g *Generator) generateStructure() error {
 	dirs := []string{
 		"cmd/server",
 		"internal/database",
-		"internal/models",
+		"internal/db",
 		"internal/handlers",
 		"internal/middleware",
 		"internal/auth",

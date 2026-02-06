@@ -4,79 +4,56 @@ const userGoTemplate = `package user
 
 import (
 	"context"
-	"database/sql"
 
 	"golang.org/x/crypto/bcrypt"
-	"{{.Module}}/internal/models"
+	"{{.Module}}/internal/db"
 )
 
 type Service struct {
-	db *sql.DB
+	queries *db.Queries
 }
 
-func NewService(db *sql.DB) *Service {
-	return &Service{db: db}
+func NewService(dbtx db.DBTX) *Service {
+	return &Service{queries: db.New(dbtx)}
 }
 
-func (s *Service) Create(ctx context.Context, email, password, name string) (*models.User, error) {
+func (s *Service) Create(ctx context.Context, email, password, name string) (*db.User, error) {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return nil, err
 	}
-
-	var user models.User
-	query := "INSERT INTO users (email, password_hash, name) VALUES ($1, $2, $3) RETURNING id, email, name, created_at, updated_at"
-	err = s.db.QueryRowContext(ctx, query, email, string(hashedPassword), name).Scan(
-		&user.ID,
-		&user.Email,
-		&user.Name,
-		&user.CreatedAt,
-		&user.UpdatedAt,
-	)
+	u, err := s.queries.CreateUser(ctx, db.CreateUserParams{
+		Email:        email,
+		PasswordHash: string(hashedPassword),
+		Name:         name,
+	})
 	if err != nil {
 		return nil, err
 	}
-
-	return &user, nil
+	return &u, nil
 }
 
-func (s *Service) GetByEmail(ctx context.Context, email string) (*models.User, error) {
-	var user models.User
-	query := "SELECT id, email, password_hash, name, created_at, updated_at FROM users WHERE email = $1"
-	err := s.db.QueryRowContext(ctx, query, email).Scan(
-		&user.ID,
-		&user.Email,
-		&user.PasswordHash,
-		&user.Name,
-		&user.CreatedAt,
-		&user.UpdatedAt,
-	)
+func (s *Service) GetByEmail(ctx context.Context, email string) (*db.User, error) {
+	u, err := s.queries.GetUserByEmail(ctx, email)
 	if err != nil {
 		return nil, err
 	}
-
-	return &user, nil
+	return &u, nil
 }
 
-func (s *Service) GetByID(ctx context.Context, id int) (*models.User, error) {
-	var user models.User
-	query := "SELECT id, email, password_hash, name, created_at, updated_at FROM users WHERE id = $1"
-	err := s.db.QueryRowContext(ctx, query, id).Scan(
-		&user.ID,
-		&user.Email,
-		&user.PasswordHash,
-		&user.Name,
-		&user.CreatedAt,
-		&user.UpdatedAt,
-	)
+func (s *Service) GetByID(ctx context.Context, id int) (*db.User, error) {
+	u, err := s.queries.GetUser(ctx, int64(id))
 	if err != nil {
 		return nil, err
 	}
-
-	return &user, nil
+	return &u, nil
 }
 
-func (s *Service) VerifyPassword(user *models.User, password string) error {
+func (s *Service) ListUsers(ctx context.Context) ([]db.User, error) {
+	return s.queries.ListUsers(ctx)
+}
+
+func (s *Service) VerifyPassword(user *db.User, password string) error {
 	return bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password))
 }
 `

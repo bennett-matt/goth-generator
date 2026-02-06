@@ -8,66 +8,48 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"{{.Module}}/internal/models"
+	"{{.Module}}/internal/db"
 )
 
 type Store struct {
-	db *sql.DB
+	queries *db.Queries
 }
 
-func NewStore(db *sql.DB) *Store {
-	return &Store{db: db}
+func NewStore(dbtx db.DBTX) *Store {
+	return &Store{queries: db.New(dbtx)}
 }
 
-func (s *Store) Create(ctx context.Context, userID int, expiresAt time.Time) (*models.Session, error) {
+func (s *Store) Create(ctx context.Context, userID int64, expiresAt time.Time) (*db.Session, error) {
 	id := uuid.New().String()
-	session := &models.Session{
+	sess, err := s.queries.CreateSession(ctx, db.CreateSessionParams{
 		ID:        id,
 		UserID:    userID,
 		ExpiresAt: expiresAt,
-		CreatedAt: time.Now(),
-	}
-
-	query := "INSERT INTO sessions (id, user_id, expires_at) VALUES ($1, $2, $3)"
-	_, err := s.db.ExecContext(ctx, query, session.ID, session.UserID, session.ExpiresAt)
+	})
 	if err != nil {
 		return nil, err
 	}
-
-	return session, nil
+	return &sess, nil
 }
 
-func (s *Store) Get(ctx context.Context, id string) (*models.Session, error) {
-	var session models.Session
-	query := "SELECT id, user_id, expires_at, created_at FROM sessions WHERE id = $1"
-	err := s.db.QueryRowContext(ctx, query, id).Scan(
-		&session.ID,
-		&session.UserID,
-		&session.ExpiresAt,
-		&session.CreatedAt,
-	)
+func (s *Store) Get(ctx context.Context, id string) (*db.Session, error) {
+	sess, err := s.queries.GetSession(ctx, id)
 	if err != nil {
 		return nil, err
 	}
-
-	if time.Now().After(session.ExpiresAt) {
+	if time.Now().After(sess.ExpiresAt) {
 		s.Delete(ctx, id)
 		return nil, sql.ErrNoRows
 	}
-
-	return &session, nil
+	return &sess, nil
 }
 
 func (s *Store) Delete(ctx context.Context, id string) error {
-	query := "DELETE FROM sessions WHERE id = $1"
-	_, err := s.db.ExecContext(ctx, query, id)
-	return err
+	return s.queries.DeleteSession(ctx, id)
 }
 
-func (s *Store) DeleteByUserID(ctx context.Context, userID int) error {
-	query := "DELETE FROM sessions WHERE user_id = $1"
-	_, err := s.db.ExecContext(ctx, query, userID)
-	return err
+func (s *Store) DeleteByUserID(ctx context.Context, userID int64) error {
+	return s.queries.DeleteUserSessions(ctx, userID)
 }
 `
 

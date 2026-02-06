@@ -60,6 +60,8 @@ setup:
 	@echo "Generating Templ code..."
 	@go run github.com/a-h/templ/cmd/templ@latest generate
 	@for f in web/templates/*_templ.go; do [ -f "$$f" ] && perl -i -0pe 's/(import templruntime "github\.com\/a-h\/templ\/runtime")\n\nimport "github\.com\/a-h\/templ"\n/\1\n/g' "$$f"; done
+	@echo "Generating SQLC code..."
+	@sqlc generate
 	@$(MAKE) deps
 	@npm install
 	@echo "✅ Setup complete! Edit .env file with your configuration."

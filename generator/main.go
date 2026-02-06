@@ -17,8 +17,8 @@ import (
 	"{{.Module}}/internal/database"
 	"{{.Module}}/internal/handlers"
 	"{{.Module}}/internal/middleware"
-	{{if .WithSessions}}"{{.Module}}/internal/session"{{end}}
-	{{if .WithAuth}}"{{.Module}}/internal/user"{{end}}
+	{{if or .WithSessions .WithAuth .WithUsers}}"{{.Module}}/internal/session"{{end}}
+	{{if or .WithAuth .WithUsers}}"{{.Module}}/internal/user"{{end}}
 )
 
 func main() {
@@ -37,14 +37,16 @@ func main() {
 		log.Fatalf("Failed to run migrations: %v", err)
 	}
 
+	var sessionStore *session.Store
 	{{if .WithSessions}}
-	sessionStore := session.NewStore(db)
+	sessionStore = session.NewStore(db)
 	{{end}}
-	{{if .WithAuth}}
-	userService := user.NewService(db)
+	var userService *user.Service
+	{{if or .WithAuth .WithUsers}}
+	userService = user.NewService(db)
 	{{end}}
 
-	h := handlers.NewHandler("{{.Name}}", db{{if .WithSessions}}, sessionStore{{end}}{{if .WithAuth}}, userService{{end}})
+	h := handlers.NewHandler("{{.Name}}", sessionStore, userService)
 
 	router := httprouter.New()
 

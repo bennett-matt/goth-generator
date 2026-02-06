@@ -5,6 +5,7 @@ const handlersGoTemplate = `package handlers
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -14,25 +15,22 @@ import (
 	"github.com/a-h/templ"
 	"github.com/julienschmidt/httprouter"
 	"github.com/justinas/nosurf"
-	"{{.Module}}/internal/models"
 	"{{.Module}}/web/templates"
-	{{if .WithSessions}}"{{.Module}}/internal/session"{{end}}
-	{{if .WithAuth}}"{{.Module}}/internal/user"{{end}}
+	{{if or .WithSessions .WithAuth}}"{{.Module}}/internal/session"{{end}}
+	{{if or .WithAuth .WithUsers}}"{{.Module}}/internal/user"{{end}}
 )
 
 type Handler struct {
 	AppName string
-	DB      *sql.DB
-	{{if .WithSessions}}SessionStore *session.Store{{end}}
-	{{if .WithAuth}}UserService *user.Service{{end}}
+	{{if or .WithSessions .WithAuth}}SessionStore *session.Store{{end}}
+	{{if or .WithAuth .WithUsers}}UserService *user.Service{{end}}
 }
 
-func NewHandler(appName string, db *sql.DB{{if .WithSessions}}, sessionStore *session.Store{{end}}{{if .WithAuth}}, userService *user.Service{{end}}) *Handler {
+func NewHandler(appName string{{if or .WithSessions .WithAuth}}, sessionStore *session.Store{{end}}{{if or .WithAuth .WithUsers}}, userService *user.Service{{end}}) *Handler {
 	return &Handler{
 		AppName: appName,
-		DB:      db,
-		{{if .WithSessions}}SessionStore: sessionStore,{{end}}
-		{{if .WithAuth}}UserService: userService,{{end}}
+		{{if or .WithSessions .WithAuth}}SessionStore: sessionStore,{{end}}
+		{{if or .WithAuth .WithUsers}}UserService: userService,{{end}}
 	}
 }
 
@@ -48,7 +46,7 @@ func (h *Handler) Home(w http.ResponseWriter, r *http.Request, _ httprouter.Para
 	userName := ""
 	{{if .WithAuth}}
 	if userID := r.Context().Value("userID"); userID != nil {
-		if user, err := h.UserService.GetByID(r.Context(), userID.(int)); err == nil {
+		if user, err := h.UserService.GetByID(r.Context(), int(userID.(int64))); err == nil {
 			loggedIn = true
 			userName = user.Name
 		}
@@ -165,23 +163,11 @@ func (h *Handler) HandleLogout(w http.ResponseWriter, r *http.Request, _ httprou
 
 {{if .WithUsers}}
 func (h *Handler) ListUsers(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	rows, err := h.DB.Query("SELECT id, email, name, created_at, updated_at FROM users")
+	users, err := h.UserService.ListUsers(r.Context())
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	defer rows.Close()
-
-	var users []models.User
-	for rows.Next() {
-		var u models.User
-		if err := rows.Scan(&u.ID, &u.Email, &u.Name, &u.CreatedAt, &u.UpdatedAt); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		users = append(users, u)
-	}
-
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(users)
 }
@@ -192,11 +178,8 @@ func (h *Handler) GetUser(w http.ResponseWriter, r *http.Request, ps httprouter.
 		http.Error(w, "Invalid user ID", http.StatusBadRequest)
 		return
 	}
-
-	var u models.User
-	err = h.DB.QueryRow("SELECT id, email, name, created_at, updated_at FROM users WHERE id = $1", id).
-		Scan(&u.ID, &u.Email, &u.Name, &u.CreatedAt, &u.UpdatedAt)
-	if err == sql.ErrNoRows {
+	u, err := h.UserService.GetByID(r.Context(), id)
+	if errors.Is(err, sql.ErrNoRows) {
 		http.Error(w, "User not found", http.StatusNotFound)
 		return
 	}
@@ -204,7 +187,6 @@ func (h *Handler) GetUser(w http.ResponseWriter, r *http.Request, ps httprouter.
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(u)
 }

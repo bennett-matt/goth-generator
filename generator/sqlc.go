@@ -12,6 +12,11 @@ sql:
         sql_package: "database/sql"
         emit_interface: true
         emit_json_tags: true
+        overrides:
+          - column: "users.password_hash"
+            go_struct_tag: 'json:"-"'
+          - column: "sessions.user_id"
+            go_type: "int64"
 `
 
 const schemaSqlTemplate = `-- Users table
@@ -53,11 +58,11 @@ CREATE TABLE IF NOT EXISTS sessions (
 
 const queriesSqlTemplate = `-- name: GetUser :one
 SELECT * FROM users
-WHERE id = $1 LIMIT 1;
+WHERE id = {{if eq .DBDriver "postgres"}}$1{{else}}?1{{end}} LIMIT 1;
 
 -- name: GetUserByEmail :one
 SELECT * FROM users
-WHERE email = $1 LIMIT 1;
+WHERE email = {{if eq .DBDriver "postgres"}}$1{{else}}?1{{end}} LIMIT 1;
 
 -- name: ListUsers :many
 SELECT * FROM users
@@ -65,26 +70,26 @@ ORDER BY created_at DESC;
 
 -- name: CreateUser :one
 INSERT INTO users (email, password_hash, name)
-VALUES ($1, $2, $3)
+VALUES ({{if eq .DBDriver "postgres"}}$1, $2, $3{{else}}?1, ?2, ?3{{end}})
 RETURNING *;
 
 {{if .WithSessions}}
 -- name: GetSession :one
 SELECT * FROM sessions
-WHERE id = $1 LIMIT 1;
+WHERE id = {{if eq .DBDriver "postgres"}}$1{{else}}?1{{end}} LIMIT 1;
 
 -- name: CreateSession :one
 INSERT INTO sessions (id, user_id, expires_at)
-VALUES ($1, $2, $3)
+VALUES ({{if eq .DBDriver "postgres"}}$1, $2, $3{{else}}?1, ?2, ?3{{end}})
 RETURNING *;
 
 -- name: DeleteSession :exec
 DELETE FROM sessions
-WHERE id = $1;
+WHERE id = {{if eq .DBDriver "postgres"}}$1{{else}}?1{{end}};
 
 -- name: DeleteUserSessions :exec
 DELETE FROM sessions
-WHERE user_id = $1;
+WHERE user_id = {{if eq .DBDriver "postgres"}}$1{{else}}?1{{end}};
 {{end}}
 `
 

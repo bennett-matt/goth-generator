@@ -25,6 +25,9 @@ vendor/
 *.swo
 *~
 
+# Generated test output
+testapp-out/
+
 # OS
 .DS_Store
 Thumbs.db
