@@ -4,7 +4,7 @@ const sqlcYamlTemplate = `version: "2"
 sql:
   - engine: "{{if eq .DBDriver "postgres"}}postgresql{{else}}sqlite{{end}}"
     queries: "db/queries"
-    schema: "db/migrations"
+    schema: "db/schema"
     gen:
       go:
         package: "db"
@@ -101,8 +101,8 @@ func (g *Generator) generateSQLC() error {
 		return err
 	}
 
-	// Schema SQL
-	if err := g.writeTemplate(g.projectPath("db/migrations/001_schema.sql"), schemaSqlTemplate, g.config); err != nil {
+	// Schema SQL (for sqlc - mirrors migration 000001)
+	if err := g.writeTemplate(g.projectPath("db/schema/schema.sql"), schemaSqlTemplate, g.config); err != nil {
 		return err
 	}
 

@@ -64,10 +64,11 @@ docker-compose up -d db
 ` + "```" + `
 {{end}}
 
-5. Run migrations:
+5. Run migrations (or let the server run them on startup):
 ` + "```" + `bash
-# Migrations are run automatically on first start
-# Or manually via: make migrate
+make migrate-up    # Run migrations up
+make migrate-down  # Rollback one migration
+make migrate-create name=add_feature  # Create a new migration
 ` + "```" + `
 
 6. Generate code and build CSS:
@@ -91,20 +92,21 @@ The server will start on ` + "`" + `http://localhost:{{.Port}}` + "`" + `
 ` + "```" + `
 {{.Name}}/
 ├── cmd/
-│   └── server/          # Main application entry point
+│   ├── server/          # Main application entry point
+│   └── migrate/         # Migration CLI (up, down, create)
 ├── internal/
 │   ├── auth/            # Authentication logic
 │   ├── database/        # Database connection and migrations
 │   ├── handlers/        # HTTP handlers
 │   ├── middleware/      # HTTP middleware
-│   ├── models/          # Data models
 │   ├── session/         # Session management
 │   └── user/            # User service
 ├── web/
 │   ├── static/          # Static assets (CSS, JS)
 │   └── templates/       # Templ templates
 ├── db/
-│   ├── migrations/      # SQL migrations
+│   ├── migrations/      # SQL migrations (up/down)
+│   ├── schema/          # Schema for SQLC
 │   └── queries/         # SQLC queries
 └── go.mod               # Go dependencies
 ` + "```" + `
@@ -127,6 +129,12 @@ make build
 
 - **SQLC**: ` + "`" + `make sqlc` + "`" + ` - Generates Go code from SQL queries
 - **Templ**: ` + "`" + `make templ` + "`" + ` - Generates Go code from Templ templates
+
+### Database Migrations
+
+- **Up**: ` + "`" + `make migrate-up` + "`" + ` - Apply all pending migrations
+- **Down**: ` + "`" + `make migrate-down` + "`" + ` - Rollback the last migration
+- **Create**: ` + "`" + `make migrate-create name=add_users_table` + "`" + ` - Create a new migration
 
 ## Docker
 

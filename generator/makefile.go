@@ -1,6 +1,6 @@
 package generator
 
-const makefileTemplate = `.PHONY: dev build run test clean migrate sqlc templ css
+const makefileTemplate = `.PHONY: dev build run test clean migrate migrate-up migrate-down migrate-create sqlc templ css
 
 # Development
 dev:
@@ -34,9 +34,20 @@ clean:
 	@go clean
 
 # Database migrations
-migrate:
-	@echo "Running migrations..."
-	@go run ./cmd/migrate || echo "Migration command not implemented yet"
+migrate: migrate-up
+
+migrate-up:
+	@echo "Running migrations up..."
+	@go run ./cmd/migrate -up
+
+migrate-down:
+	@echo "Running migrations down..."
+	@go run ./cmd/migrate -down
+
+migrate-create:
+	@echo "Creating migration..."
+	@if [ -z "$(name)" ]; then echo "Usage: make migrate-create name=add_users_table"; exit 1; fi
+	@go run ./cmd/migrate -create $(name)
 
 # Generate SQLC code
 sqlc:

@@ -3,10 +3,16 @@ package generator
 const databaseGoTemplate = `package database
 
 import (
-	"context"
 	"database/sql"
 	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
+
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/database/sqlite3"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	{{if eq .DBDriver "postgres"}}
 	_ "github.com/jackc/pgx/v5/stdlib"
 	{{else if eq .DBDriver "sqlite"}}
@@ -39,48 +45,41 @@ func New() (*sql.DB, error) {
 	return db, nil
 }
 
-func Migrate(db *sql.DB) error {
-	ctx := context.Background()
-	
-	{{if eq .DBDriver "postgres"}}
-	query := {{printf "%c" 96}}
-	CREATE TABLE IF NOT EXISTS users (
-		id SERIAL PRIMARY KEY,
-		email VARCHAR(255) UNIQUE NOT NULL,
-		password_hash VARCHAR(255) NOT NULL,
-		name VARCHAR(255) NOT NULL,
-		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-	);
+func MigrateUp(db *sql.DB) error {
+	dbURL := os.Getenv("DATABASE_URL")
+	if dbURL == "" {
+		{{if eq .DBDriver "postgres"}}
+		dbURL = "postgres://user:password@localhost:5432/{{.Name}}?sslmode=disable"
+		{{else if eq .DBDriver "sqlite"}}
+		dbURL = "./{{.Name}}.db"
+		{{end}}
+	}
 
-	CREATE TABLE IF NOT EXISTS sessions (
-		id VARCHAR(255) PRIMARY KEY,
-		user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-		expires_at TIMESTAMP NOT NULL,
-		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-	);
-	{{printf "%c" 96}}
-	{{else if eq .DBDriver "sqlite"}}
-	query := {{printf "%c" 96}}
-	CREATE TABLE IF NOT EXISTS users (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		email TEXT UNIQUE NOT NULL,
-		password_hash TEXT NOT NULL,
-		name TEXT NOT NULL,
-		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-	);
-
-	CREATE TABLE IF NOT EXISTS sessions (
-		id TEXT PRIMARY KEY,
-		user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-		expires_at DATETIME NOT NULL,
-		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-	);
-	{{printf "%c" 96}}
+	{{if eq .DBDriver "sqlite"}}
+	if !strings.HasPrefix(dbURL, "sqlite3://") && !strings.HasPrefix(dbURL, "file://") {
+		dbURL = "sqlite3://" + dbURL
+	}
 	{{end}}
 
-	if _, err := db.ExecContext(ctx, query); err != nil {
+	migrationsPath := os.Getenv("MIGRATIONS_PATH")
+	if migrationsPath == "" {
+		migrationsPath = "db/migrations"
+	}
+	absPath, err := filepath.Abs(migrationsPath)
+	if err != nil {
+		return fmt.Errorf("failed to resolve migrations path: %w", err)
+	}
+
+	m, err := migrate.New(
+		"file://"+absPath,
+		dbURL,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create migrate instance: %w", err)
+	}
+	defer m.Close()
+
+	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
 		return fmt.Errorf("failed to run migrations: %w", err)
 	}
 

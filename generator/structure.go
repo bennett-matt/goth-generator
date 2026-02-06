@@ -17,7 +17,9 @@ func (g *Generator) generateStructure() error {
 		"web/templates",
 		"web/static/css",
 		"web/static/js",
+		"cmd/migrate",
 		"db/migrations",
+		"db/schema",
 		"db/queries",
 	}
 

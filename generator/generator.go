@@ -30,6 +30,7 @@ func (g *Generator) Generate() error {
 		{"project structure", g.generateStructure},
 		{"main.go", g.generateMain},
 		{"database", g.generateDatabase},
+		{"migrations", g.generateMigrate},
 		{"session service", g.generateSession},
 		{"user service", g.generateUser},
 		{"handlers", g.generateHandlers},
