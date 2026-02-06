@@ -60,8 +60,8 @@ func main() {
 	fmt.Printf("📦 Module: %s\n", *module)
 	fmt.Printf("🚀 Next steps:\n")
 	fmt.Printf("   1. cd %s\n", *output)
-	fmt.Printf("   2. cp .env.example .env  # Configure your environment\n")
-	fmt.Printf("   3. make setup\n")
+	fmt.Printf("   2. make setup\n")
+	fmt.Printf("   3. start db (docker-compose up -d db)\n")
 	fmt.Printf("   4. make dev\n")
 }
 
