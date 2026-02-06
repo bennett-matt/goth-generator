@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/bennett-matt/goth-generator/generator"
@@ -54,7 +53,7 @@ func main() {
 	fmt.Printf("✅ Successfully generated project '%s' in %s\n", *name, *output)
 	fmt.Printf("📦 Module: %s\n", *module)
 	fmt.Printf("🚀 Next steps:\n")
-	fmt.Printf("   1. cd %s\n", filepath.Join(*output, *name))
+	fmt.Printf("   1. cd %s\n", *output)
 	fmt.Printf("   2. cp .env.example .env  # Configure your environment\n")
 	fmt.Printf("   3. make dev\n")
 }

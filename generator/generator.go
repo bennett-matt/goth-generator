@@ -19,8 +19,7 @@ func New(config *Config) *Generator {
 }
 
 func (g *Generator) Generate() error {
-	projectDir := filepath.Join(g.config.OutputDir, g.config.Name)
-	if err := os.MkdirAll(projectDir, 0755); err != nil {
+	if err := os.MkdirAll(g.config.OutputDir, 0755); err != nil {
 		return fmt.Errorf("failed to create project directory: %w", err)
 	}
 
@@ -56,7 +55,7 @@ func (g *Generator) Generate() error {
 }
 
 func (g *Generator) projectPath(paths ...string) string {
-	allPaths := append([]string{g.config.OutputDir, g.config.Name}, paths...)
+	allPaths := append([]string{g.config.OutputDir}, paths...)
 	return filepath.Join(allPaths...)
 }
 

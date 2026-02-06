@@ -17,6 +17,10 @@ go build -o goth-generate .
 ## Usage
 
 ```bash
+# Generate in current directory (default)
+goth-generate -name myapp -module github.com/user/myapp
+
+# Or specify output directory
 goth-generate -name myapp -module github.com/user/myapp -output ./projects
 ```
 
