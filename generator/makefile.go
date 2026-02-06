@@ -4,10 +4,11 @@ const makefileTemplate = `.PHONY: dev build run test clean migrate sqlc templ cs
 
 # Development
 dev:
-	@echo "Starting development server..."
-	@go run ./cmd/server
+	@templ generate 2>/dev/null || true
+	@echo "Starting development server and CSS watcher..."
+	@(make css &) && go run ./cmd/server
 
-# Build CSS (Tailwind + DaisyUI) - run in separate terminal for watch mode
+# Build CSS (Tailwind + DaisyUI) - watch mode, also started by make dev
 css:
 	@npm run build:css
 
@@ -54,7 +55,7 @@ setup: deps
 	@cp .env.example .env
 	@npm install
 	@echo "✅ Setup complete! Edit .env file with your configuration."
-	@echo "   Run 'make css' in another terminal to build/watch Tailwind CSS."
+	@echo "   Run 'make dev' to start the server and CSS watcher."
 `
 
 func (g *Generator) generateMakefile() error {

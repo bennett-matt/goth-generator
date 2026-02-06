@@ -53,6 +53,7 @@ func Auth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Skip auth for public routes
 		publicRoutes := map[string]bool{
+			"/":        true,
 			"/health":  true,
 			"/login":   true,
 			"/register": true,
@@ -60,7 +61,7 @@ func Auth(next http.Handler) http.Handler {
 		}
 
 		for route := range publicRoutes {
-			if r.URL.Path == route || len(r.URL.Path) > len(route) && r.URL.Path[:len(route)] == route {
+			if r.URL.Path == route || (len(route) > 0 && len(r.URL.Path) >= len(route) && r.URL.Path[:len(route)] == route) {
 				next.ServeHTTP(w, r)
 				return
 			}

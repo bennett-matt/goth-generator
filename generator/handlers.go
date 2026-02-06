@@ -8,21 +8,25 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/a-h/templ"
 	"github.com/julienschmidt/httprouter"
 	"{{.Module}}/internal/models"
+	"{{.Module}}/web/templates"
 	{{if .WithSessions}}"{{.Module}}/internal/session"{{end}}
-	"{{.Module}}/internal/user"
+	{{if .WithAuth}}"{{.Module}}/internal/user"{{end}}
 )
 
 type Handler struct {
-	DB          *sql.DB
+	AppName string
+	DB      *sql.DB
 	{{if .WithSessions}}SessionStore *session.Store{{end}}
 	{{if .WithAuth}}UserService *user.Service{{end}}
 }
 
-func NewHandler(db *sql.DB{{if .WithSessions}}, sessionStore *session.Store{{end}}{{if .WithAuth}}, userService *user.Service{{end}}) *Handler {
+func NewHandler(appName string, db *sql.DB{{if .WithSessions}}, sessionStore *session.Store{{end}}{{if .WithAuth}}, userService *user.Service{{end}}) *Handler {
 	return &Handler{
-		DB:          db,
+		AppName: appName,
+		DB:      db,
 		{{if .WithSessions}}SessionStore: sessionStore,{{end}}
 		{{if .WithAuth}}UserService: userService,{{end}}
 	}
@@ -35,24 +39,25 @@ func HealthCheck(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	})
 }
 
-var db *sql.DB
-
-
-{{if .WithAuth}}
 func (h *Handler) Home(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	userID := r.Context().Value("userID")
-	if userID == nil {
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
-		return
+	loggedIn := false
+	userName := ""
+	{{if .WithAuth}}
+	if userID := r.Context().Value("userID"); userID != nil {
+		if user, err := h.UserService.GetByID(r.Context(), userID.(int)); err == nil {
+			loggedIn = true
+			userName = user.Name
+		}
 	}
-
-	w.Header().Set("Content-Type", "text/html")
-	w.Write([]byte("<h1>Welcome!</h1><p>You are logged in.</p>"))
+	{{end}}
+	ctx := templ.WithChildren(r.Context(), templates.Home(loggedIn, userName))
+	templates.Base("Home", h.AppName, loggedIn).Render(ctx, w)
 }
 
+{{if .WithAuth}}
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	w.Header().Set("Content-Type", "text/html")
-	w.Write([]byte("<h1>Login</h1><form method=\"POST\"><input name=\"email\" type=\"email\"><input name=\"password\" type=\"password\"><button>Login</button></form>"))
+	ctx := templ.WithChildren(r.Context(), templates.Login())
+	templates.Base("Login", h.AppName, false).Render(ctx, w)
 }
 
 func (h *Handler) HandleLogin(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
@@ -61,8 +66,8 @@ func (h *Handler) HandleLogin(w http.ResponseWriter, r *http.Request, _ httprout
 }
 
 func (h *Handler) Register(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	w.Header().Set("Content-Type", "text/html")
-	w.Write([]byte("<h1>Register</h1><form method=\"POST\"><input name=\"email\" type=\"email\"><input name=\"password\" type=\"password\"><input name=\"name\" type=\"text\"><button>Register</button></form>"))
+	ctx := templ.WithChildren(r.Context(), templates.Register())
+	templates.Base("Register", h.AppName, false).Render(ctx, w)
 }
 
 func (h *Handler) HandleRegister(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {

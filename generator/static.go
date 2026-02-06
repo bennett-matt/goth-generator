@@ -18,7 +18,9 @@ const packageJsonTemplate = `{
 `
 
 const inputCssTemplate = `@import "tailwindcss";
-@plugin "daisyui";
+@plugin "daisyui" {
+  themes: light --default, dark --prefersdark, corporate, business, cupcake, retro, forest, night;
+}
 `
 
 func (g *Generator) generateStatic() error {

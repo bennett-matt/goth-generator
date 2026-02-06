@@ -44,7 +44,7 @@ func main() {
 	userService := user.NewService(db)
 	{{end}}
 
-	h := handlers.NewHandler(db{{if .WithSessions}}, sessionStore{{end}}{{if .WithAuth}}, userService{{end}})
+	h := handlers.NewHandler("{{.Name}}", db{{if .WithSessions}}, sessionStore{{end}}{{if .WithAuth}}, userService{{end}})
 
 	router := httprouter.New()
 
@@ -65,9 +65,9 @@ func main() {
 	{{end}}
 	handler = nosurf.New(handler)
 
-	// Routes
-	{{if .WithAuth}}
+	// Routes - home page is always available
 	router.GET("/", h.Home)
+	{{if .WithAuth}}
 	router.GET("/login", h.Login)
 	router.POST("/login", h.HandleLogin)
 	router.GET("/register", h.Register)
