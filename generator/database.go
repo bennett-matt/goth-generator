@@ -43,7 +43,7 @@ func Migrate(db *sql.DB) error {
 	ctx := context.Background()
 	
 	{{if eq .DBDriver "postgres"}}
-	query := "` + "`" + `
+	query := {{printf "%c" 96}}
 	CREATE TABLE IF NOT EXISTS users (
 		id SERIAL PRIMARY KEY,
 		email VARCHAR(255) UNIQUE NOT NULL,
@@ -59,9 +59,9 @@ func Migrate(db *sql.DB) error {
 		expires_at TIMESTAMP NOT NULL,
 		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 	);
-	` + "`" + `"
+	{{printf "%c" 96}}
 	{{else if eq .DBDriver "sqlite"}}
-	query := "` + "`" + `
+	query := {{printf "%c" 96}}
 	CREATE TABLE IF NOT EXISTS users (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		email TEXT UNIQUE NOT NULL,
@@ -77,7 +77,7 @@ func Migrate(db *sql.DB) error {
 		expires_at DATETIME NOT NULL,
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 	);
-	` + "`" + `"
+	{{printf "%c" 96}}
 	{{end}}
 
 	if _, err := db.ExecContext(ctx, query); err != nil {

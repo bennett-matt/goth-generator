@@ -5,7 +5,6 @@ const userGoTemplate = `package user
 import (
 	"context"
 	"database/sql"
-	"errors"
 
 	"golang.org/x/crypto/bcrypt"
 	"{{.Module}}/internal/models"
