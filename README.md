@@ -8,11 +8,14 @@ Standalone Go project generator for web apps with users, sessions, auth, Tailwin
 go install github.com/bennett-matt/goth-generator@latest
 ```
 
-Or from source:
+Or from source (use this when developing or before changes are published):
 
 ```bash
 go build -o goth-generate .
+./goth-generate -version  # Verify you're running the built binary (shows 1.1.0)
 ```
+
+> **Note:** `go install` creates a binary named `goth-generator`. Use `./goth-generate` from a local build to ensure you have the latest changes.
 
 ## Usage
 

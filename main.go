@@ -11,6 +11,7 @@ import (
 
 func main() {
 	var (
+		version     = flag.Bool("version", false, "Print version and exit")
 		name        = flag.String("name", "", "Project name (required)")
 		module      = flag.String("module", "", "Go module path (e.g., github.com/user/project)")
 		output      = flag.String("output", ".", "Output directory for generated project")
@@ -21,6 +22,11 @@ func main() {
 		withSessions = flag.Bool("sessions", true, "Include session management")
 	)
 	flag.Parse()
+
+	if *version {
+		fmt.Println("goth-generate 1.1.0")
+		return
+	}
 
 	if *name == "" {
 		fmt.Fprintf(os.Stderr, "Error: -name is required\n")
