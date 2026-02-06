@@ -5,7 +5,7 @@ const packageJsonTemplate = `{
 	"version": "1.0.0",
 	"description": "",
 	"scripts": {
-		"build:css": "npx @tailwindcss/cli -i ./web/static/css/input.css -o ./web/static/css/output.css --watch",
+		"build:css": "npx @tailwindcss/cli -i ./input.css -o ./web/static/css/output.css --watch",
 		"postinstall": "node -e \"require('fs').mkdirSync('web/static/js',{recursive:true}); require('fs').copyFileSync('node_modules/htmx.org/dist/htmx.min.js','web/static/js/htmx.min.js')\""
 	},
 	"devDependencies": {
@@ -29,8 +29,8 @@ func (g *Generator) generateStatic() error {
 		return err
 	}
 
-	// Input CSS - Tailwind v4 uses @import and @plugin (https://daisyui.com/docs/install/cli)
-	if err := g.writeFile(g.projectPath("web/static/css/input.css"), inputCssTemplate); err != nil {
+	// Input CSS at project root so @import "tailwindcss" resolves from node_modules
+	if err := g.writeFile(g.projectPath("input.css"), inputCssTemplate); err != nil {
 		return err
 	}
 
