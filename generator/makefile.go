@@ -4,7 +4,7 @@ const makefileTemplate = `.PHONY: dev build run test clean migrate sqlc templ cs
 
 # Development
 dev:
-	@templ generate 2>/dev/null || true
+	@go run github.com/a-h/templ/cmd/templ@latest generate 2>/dev/null || true
 	@echo "Building CSS..."
 	@npm run build:css:once
 	@echo "Starting development server and CSS watcher..."
@@ -45,7 +45,7 @@ sqlc:
 # Generate Templ code
 templ:
 	@echo "Generating Templ code..."
-	@templ generate
+	@go run github.com/a-h/templ/cmd/templ@latest generate
 
 # Install dependencies
 deps:
@@ -56,7 +56,7 @@ deps:
 setup:
 	@cp .env.example .env
 	@echo "Generating Templ code..."
-	@templ generate
+	@go run github.com/a-h/templ/cmd/templ@latest generate
 	@$(MAKE) deps
 	@npm install
 	@echo "✅ Setup complete! Edit .env file with your configuration."
