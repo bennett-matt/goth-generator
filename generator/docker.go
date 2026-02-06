@@ -4,15 +4,22 @@ const dockerfileTemplate = `FROM golang:1.23-alpine AS builder
 
 WORKDIR /app
 
-# Install build dependencies
-RUN apk add --no-cache git
+# Install build dependencies (git for go get, node/npm for Tailwind)
+RUN apk add --no-cache git nodejs npm
 
-# Copy go mod files
+# Go modules
 COPY go.mod go.sum ./
 RUN go mod download
 
-# Copy source code
+# Copy source
 COPY . .
+
+# Build Tailwind CSS (output.css for static assets)
+RUN npm install && npm run build:css:once
+
+# Generate Templ code from .templ files
+RUN go run github.com/a-h/templ/cmd/templ@latest generate
+RUN for f in web/templates/*_templ.go; do [ -f "$$f" ] && perl -i -0pe 's/(import templruntime "github\.com\/a-h\/templ\/runtime")\n\nimport "github\.com\/a-h\/templ"\n/\1\n/g' "$$f"; done
 
 # Build the application
 RUN CGO_ENABLED=0 GOOS=linux go build -o /app/server ./cmd/server
@@ -25,6 +32,7 @@ RUN apk --no-cache add ca-certificates
 WORKDIR /root/
 
 COPY --from=builder /app/server .
+COPY --from=builder /app/web ./web
 
 {{if eq .DBDriver "postgres"}}
 # PostgreSQL client for migrations (optional)
