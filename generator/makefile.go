@@ -5,6 +5,7 @@ const makefileTemplate = `.PHONY: dev build run test clean migrate sqlc templ cs
 # Development
 dev:
 	@go run github.com/a-h/templ/cmd/templ@latest generate 2>/dev/null || true
+	@for f in web/templates/*_templ.go; do [ -f "$$f" ] && perl -i -0pe 's/(import templruntime "github\.com\/a-h\/templ\/runtime")\n\nimport "github\.com\/a-h\/templ"\n/\1\n/g' "$$f"; done
 	@echo "Building CSS..."
 	@npm run build:css:once
 	@echo "Starting development server and CSS watcher..."
@@ -42,10 +43,11 @@ sqlc:
 	@echo "Generating SQLC code..."
 	@sqlc generate
 
-# Generate Templ code
+# Generate Templ code (fixes templ compiler duplicate-import bug)
 templ:
 	@echo "Generating Templ code..."
 	@go run github.com/a-h/templ/cmd/templ@latest generate
+	@for f in web/templates/*_templ.go; do [ -f "$$f" ] && perl -i -0pe 's/(import templruntime "github\.com\/a-h\/templ\/runtime")\n\nimport "github\.com\/a-h\/templ"\n/\1\n/g' "$$f"; done
 
 # Install dependencies
 deps:
@@ -57,6 +59,7 @@ setup:
 	@cp .env.example .env
 	@echo "Generating Templ code..."
 	@go run github.com/a-h/templ/cmd/templ@latest generate
+	@for f in web/templates/*_templ.go; do [ -f "$$f" ] && perl -i -0pe 's/(import templruntime "github\.com\/a-h\/templ\/runtime")\n\nimport "github\.com\/a-h\/templ"\n/\1\n/g' "$$f"; done
 	@$(MAKE) deps
 	@npm install
 	@echo "✅ Setup complete! Edit .env file with your configuration."
